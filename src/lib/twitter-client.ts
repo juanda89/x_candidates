@@ -13,20 +13,35 @@ export interface TwitterProfileResponse {
   created_at?: string;
 }
 
-export interface TwitterTweetsResponse {
-  data: Array<{
-    id: string;
-    text: string;
-    created_at: string;
-    public_metrics?: {
-      retweet_count?: number;
-      reply_count?: number;
-      like_count?: number;
-      quote_count?: number;
-      impression_count?: number;
-    };
-  }>;
-  meta?: { result_count?: number; next_token?: string };
+export interface TweetItem {
+  id: string;
+  url?: string;
+  text: string;
+  createdAt?: string;
+  created_at?: string;
+  lang?: string;
+  likeCount?: number;
+  retweetCount?: number;
+  replyCount?: number;
+  quoteCount?: number;
+  viewCount?: number;
+  isReply?: boolean;
+}
+
+export interface LastTweetsResponse {
+  tweets: TweetItem[];
+  has_next_page?: boolean;
+  next_cursor?: string;
+  status?: string;
+  message?: string;
+}
+
+export interface RepliesResponse {
+  replies: TweetItem[];
+  has_next_page?: boolean;
+  next_cursor?: string;
+  status?: string;
+  message?: string;
 }
 
 export class TwitterAPIClient {
@@ -85,7 +100,7 @@ export class TwitterAPIClient {
     throw new Error(`Twitter profile error: tried ${errs.join(' | ')}`);
   }
 
-  async getUserTweets(userId: string, count: number = 100, username?: string): Promise<TwitterTweetsResponse> {
+  async getUserTweets(userId: string, count: number = 100, username?: string): Promise<LastTweetsResponse> {
     // Definitive endpoint: /twitter/user/last_tweets with user_id or username and count
     const path = this.tweetsPathOverride || '/twitter/user/last_tweets';
     const headerSets = this.buildHeaderAttempts();
@@ -114,7 +129,7 @@ export class TwitterAPIClient {
     throw new Error(`Twitter tweets error: tried ${errs.join(' | ')}`);
   }
 
-  async getTweetReplies(tweetId: string, maxResults: number = 100): Promise<{ data: Array<{ id: string; text: string; author_id: string; created_at: string }> }>
+  async getTweetReplies(tweetId: string, maxResults: number = 100): Promise<RepliesResponse>
   {
     const path = this.repliesPathOverride || '/twitter/tweet/replies';
     // Try param names commonly used by providers

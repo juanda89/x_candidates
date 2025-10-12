@@ -63,31 +63,31 @@ export async function POST(req: NextRequest) {
 
     // 3) Obtener tweets (100)
     const tweetsResp = await twitter.getUserTweets(normUserId, 100, normUsername);
-    // twitterapi.io may return tweets array under different keys
+    // twitterapi.io returns { tweets: [...] } for last_tweets
+    // but keep fallbacks for safety
     // @ts-ignore
-    const tweetList: any[] = tweetsResp?.data || tweetsResp?.tweets || tweetsResp?.items || [];
+    const tweetList: any[] = tweetsResp?.tweets || tweetsResp?.data || tweetsResp?.items || [];
 
     // Map y upsert tweets
     const tweetRows = tweetList.map((t) => {
-      const pm = t.public_metrics || {} as any;
-      const views = pm.impression_count ?? pm.impressions ?? pm.view_count ?? 0;
-      const likes = pm.like_count ?? 0;
-      const rts = pm.retweet_count ?? 0;
-      const replies = pm.reply_count ?? 0;
+      const views = t.viewCount ?? t.impression_count ?? t.impressions ?? t.view_count ?? 0;
+      const likes = t.likeCount ?? t.likes ?? 0;
+      const rts = t.retweetCount ?? t.retweets ?? 0;
+      const replies = t.replyCount ?? t.replies ?? 0;
       return {
         profile_id: upsertedProfile.id,
         tweet_id: t.id,
         text: t.text,
-        created_at_twitter: new Date(t.created_at || t.createdAt || t.time || Date.now()).toISOString(),
+        created_at_twitter: new Date(t.createdAt || t.created_at || t.time || Date.now()).toISOString(),
         views_count: views,
         likes_count: likes,
         retweets_count: rts,
         replies_count: replies,
-        quotes_count: pm.quote_count ?? pm.quotes_count ?? 0,
-        url: `https://x.com/${normUsername}/status/${t.id}`,
-        is_reply: false,
+        quotes_count: t.quoteCount ?? 0,
+        url: t.url || `https://x.com/${normUsername}/status/${t.id}`,
+        is_reply: t.isReply ?? false,
         is_retweet: false,
-        language: null as string | null,
+        language: (t.lang ?? null) as string | null,
       };
     });
 
