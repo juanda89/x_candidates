@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TwitterAPIClient } from '@/src/lib/twitter-client';
-import { createAdminClient } from '@/src/lib/supabase-admin';
+import { TwitterAPIClient } from '@/lib/twitter-client';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 function extractUsername(raw: string): string {
   const trimmed = raw.trim();
@@ -171,4 +171,3 @@ export async function POST(req: NextRequest) {
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
-

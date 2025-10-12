@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase-client';
+import { supabase } from '@/lib/supabase-client';
 
 type TweetRow = {
   id: string;
@@ -142,4 +142,3 @@ export default function AnalisisPage() {
     </main>
   );
 }
-
