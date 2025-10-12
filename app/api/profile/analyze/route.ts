@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      username: profile.username,
+      username: normUsername,
       profile_id: upsertedProfile.id,
       tweets_processed: savedTweets?.length ?? 0,
     });
