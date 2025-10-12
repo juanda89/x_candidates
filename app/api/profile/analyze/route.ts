@@ -63,10 +63,10 @@ export async function POST(req: NextRequest) {
 
     // 3) Obtener tweets (100)
     const tweetsResp = await twitter.getUserTweets(normUserId, normUsername, undefined, false);
-    // twitterapi.io returns { tweets: [...] } for last_tweets
-    // but keep fallbacks for safety
+    // twitterapi.io returns { tweets: [...] } for last_tweets; guard for safety
     // @ts-ignore
-    const tweetList: any[] = tweetsResp?.tweets || tweetsResp?.data || tweetsResp?.items || [];
+    const tweetListRaw: any = tweetsResp?.tweets ?? tweetsResp?.data ?? tweetsResp?.items ?? [];
+    const tweetList: any[] = Array.isArray(tweetListRaw) ? tweetListRaw : [];
 
     // Map y upsert tweets
     const tweetRows = tweetList.map((t) => {
@@ -113,7 +113,27 @@ export async function POST(req: NextRequest) {
       .limit(100);
     if (fetchTweetsErr) throw fetchTweetsErr;
 
-    // 4) Analítica derivada + virality score
+    // 4) Traer replies por tweet "de una vez" con control de concurrencia
+    const repliesCountMap: Record<string, number> = {};
+    const concurrency = 5;
+    for (let i = 0; i < (savedTweets?.length || 0); i += concurrency) {
+      const slice = (savedTweets || []).slice(i, i + concurrency);
+      const results = await Promise.all(
+        slice.map(async (t) => {
+          try {
+            const r = await twitter.getTweetReplies(t.tweet_id);
+            // @ts-ignore
+            const arr: any[] = Array.isArray(r?.replies) ? r.replies : [];
+            return { id: t.tweet_id, count: arr.length };
+          } catch {
+            return { id: t.tweet_id, count: t.replies_count ?? 0 };
+          }
+        })
+      );
+      results.forEach((r) => (repliesCountMap[r.id] = r.count));
+    }
+
+    // 5) Analítica derivada + virality score
     const analyses = [] as any[];
     const scores = [] as any[];
     const rawScores: number[] = [];
@@ -121,7 +141,7 @@ export async function POST(req: NextRequest) {
       const views = t.views_count ?? 0;
       const likes = t.likes_count ?? 0;
       const rts = t.retweets_count ?? 0;
-      const replies = t.replies_count ?? 0;
+      const replies = repliesCountMap[t.tweet_id] ?? t.replies_count ?? 0;
       const likeRate = views > 0 ? (likes / views) * 100 : 0;
       const retweetRate = views > 0 ? (rts / views) * 100 : 0;
       const replyRate = views > 0 ? (replies / views) * 100 : 0;

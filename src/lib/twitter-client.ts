@@ -141,25 +141,21 @@ export class TwitterAPIClient {
     throw new Error(`Twitter tweets error: tried ${errs.join(' | ')}`);
   }
 
-  async getTweetReplies(tweetId: string, maxResults: number = 100): Promise<RepliesResponse>
-  {
+  async getTweetReplies(tweetId: string, cursor?: string, count?: number): Promise<RepliesResponse> {
     const path = this.repliesPathOverride || '/twitter/tweet/replies';
-    // Try param names commonly used by providers
     const headerSets = this.buildHeaderAttempts();
-    const candidates: Array<Record<string,string|number>> = [
-      { tweetId, max_results: maxResults },
-      { tweet_id: tweetId, max_results: maxResults },
-      { id: tweetId, max_results: maxResults },
-    ];
     const errs: string[] = [];
     for (const base of this.getBaseCandidates()) {
       for (const h of headerSets) {
-        for (const p of candidates) {
-          const qs = Object.entries(p).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
-          const res = await fetch(`${base}${path}?${qs}`, { headers: h });
-          if (res.ok) return res.json();
-          errs.push(`${res.status} ${base}${path}?${Object.keys(p).join(',')}`);
-        }
+        const params: Record<string, string | number> = { tweet_id: tweetId };
+        if (cursor) params.cursor = cursor;
+        if (typeof count === 'number') params.count = count;
+        const qs = Object.entries(params)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+          .join('&');
+        const res = await fetch(`${base}${path}?${qs}`, { headers: h });
+        if (res.ok) return res.json();
+        errs.push(`${res.status} ${base}${path}?${Object.keys(params).join(',')}`);
       }
     }
     throw new Error(`Twitter replies error: tried ${errs.join(' | ')}`);
