@@ -21,21 +21,39 @@ export async function POST(req: NextRequest) {
 
     // 1) Obtener perfil
     const profile = await twitter.getUserProfile(handle);
+    const p: any = profile as any;
+    const base = p?.data?.user ?? p?.data ?? p?.user ?? p?.result ?? p;
+    const normUserId = base?.id ?? base?.user_id ?? base?.id_str ?? base?.userId;
+    const normUsername = base?.username ?? base?.userName ?? base?.screen_name ?? base?.handle ?? handle;
+    const normName = base?.name ?? base?.display_name ?? null;
+    const normImage = base?.profile_image_url ?? base?.profile_image ?? base?.profileImageUrl ?? null;
+    const normBio = base?.description ?? base?.bio ?? null;
+    const metrics = base?.public_metrics ?? {
+      followers_count: base?.followers_count ?? base?.followersCount ?? null,
+      following_count: base?.following_count ?? base?.followingCount ?? null,
+      tweet_count: base?.tweet_count ?? base?.tweetsCount ?? null,
+    };
+
+    if (!normUserId) {
+      return NextResponse.json({ error: 'No se pudo obtener el user_id del perfil' }, { status: 502 });
+    }
 
     // 2) Upsert perfil
     const { data: upsertedProfile, error: upsertErr } = await supabase
       .from('profiles')
       .upsert({
-        twitter_user_id: profile.id,
-        twitter_username: profile.username,
-        display_name: profile.name,
-        profile_image_url: profile.profile_image_url,
-        bio: profile.description,
-        followers_count: profile.public_metrics?.followers_count ?? null,
-        following_count: profile.public_metrics?.following_count ?? null,
-        tweet_count: profile.public_metrics?.tweet_count ?? null,
-        verified: profile.verified ?? null,
-        created_at_twitter: profile.created_at ? new Date(profile.created_at).toISOString() : null,
+        twitter_user_id: String(normUserId),
+        twitter_username: String(normUsername),
+        display_name: normName,
+        profile_image_url: normImage,
+        bio: normBio,
+        followers_count: metrics?.followers_count ?? null,
+        following_count: metrics?.following_count ?? null,
+        tweet_count: metrics?.tweet_count ?? null,
+        verified: base?.verified ?? base?.isVerified ?? null,
+        created_at_twitter: (base?.created_at || base?.createdAt)
+          ? new Date(base?.created_at || base?.createdAt).toISOString()
+          : null,
         last_synced: new Date().toISOString(),
       }, { onConflict: 'twitter_user_id' })
       .select('*')
