@@ -32,8 +32,10 @@ export interface TwitterTweetsResponse {
 export class TwitterAPIClient {
   private apiKey = process.env.TWITTER_API_KEY;
   private baseURL = process.env.TWITTER_API_BASE_URL || 'https://api.twitterapi.io/v1';
-  // Optional override; if set to 'x-api-key' usamos ese header directamente
-  private authStyle = (process.env.TWITTER_API_AUTH_STYLE || 'bearer').toLowerCase();
+  // Prefer x-api-key by default per diagnostics
+  private authStyle = (process.env.TWITTER_API_AUTH_STYLE || 'x-api-key').toLowerCase();
+  private profilePathOverride = process.env.TWITTER_API_PROFILE_PATH;
+  private tweetsPathOverride = process.env.TWITTER_API_TWEETS_PATH;
 
   private async request<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
     if (!this.apiKey) throw new Error('Falta TWITTER_API_KEY');
@@ -68,15 +70,85 @@ export class TwitterAPIClient {
   }
 
   async getUserProfile(username: string): Promise<TwitterProfileResponse> {
-    return this.request('/user/profile', { username });
+    const candidates: Array<{ path: string; asPathParam?: boolean; paramKeys?: string[] }> = [];
+    if (this.profilePathOverride) candidates.push({ path: this.profilePathOverride, paramKeys: ['username','screen_name','handle'] });
+    candidates.push(
+      { path: '/twitter/user/profile', paramKeys: ['username','screen_name','handle'] },
+      { path: '/user/profile', paramKeys: ['username','screen_name','handle'] },
+      { path: '/users/by/username', asPathParam: true },
+      { path: '/twitter/users/by/username', asPathParam: true },
+    );
+
+    const headerSets = this.buildHeaderAttempts();
+    const errs: string[] = [];
+    for (const h of headerSets) {
+      for (const c of candidates) {
+        try {
+          if (c.asPathParam) {
+            const res = await fetch(`${this.baseURL}${c.path}/${encodeURIComponent(username)}`, { headers: h });
+            if (res.ok) return res.json();
+            errs.push(`${res.status} ${c.path}/:username`);
+            continue;
+          }
+          const keys = c.paramKeys || ['username'];
+          for (const k of keys) {
+            const res = await fetch(`${this.baseURL}${c.path}?${k}=${encodeURIComponent(username)}`, { headers: h });
+            if (res.ok) return res.json();
+            errs.push(`${res.status} ${c.path}?${k}=`);
+          }
+        } catch (e: any) {
+          errs.push(`err ${c.path}: ${e.message}`);
+        }
+      }
+    }
+    throw new Error(`Twitter profile error: tried paths/auth ${errs.join(' | ')}`);
   }
 
-  async getUserTweets(userId: string, maxResults: number = 100): Promise<TwitterTweetsResponse> {
-    return this.request('/user/tweets', { user_id: userId, max_results: maxResults });
+  async getUserTweets(userId: string, maxResults: number = 100, username?: string): Promise<TwitterTweetsResponse> {
+    const candidates: Array<{ path: string; params: Record<string,string|number|undefined> }>= [];
+    const basePath = this.tweetsPathOverride || '/twitter/user/tweets';
+    candidates.push(
+      { path: basePath, params: { user_id: userId, max_results: maxResults } },
+      { path: basePath, params: { username: username, max_results: maxResults } },
+      { path: '/user/tweets', params: { user_id: userId, max_results: maxResults } },
+      { path: '/user/tweets', params: { username: username, max_results: maxResults } },
+    );
+
+    const headerSets = this.buildHeaderAttempts();
+    const errs: string[] = [];
+    for (const h of headerSets) {
+      for (const c of candidates) {
+        try {
+          const qs = Object.entries(c.params)
+            .filter(([,v]) => v !== undefined)
+            .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+            .join('&');
+          const res = await fetch(`${this.baseURL}${c.path}?${qs}`, { headers: h });
+          if (res.ok) return res.json();
+          errs.push(`${res.status} ${c.path}?${Object.keys(c.params).join(',')}`);
+        } catch (e: any) {
+          errs.push(`err ${c.path}: ${e.message}`);
+        }
+      }
+    }
+    throw new Error(`Twitter tweets error: tried paths/auth ${errs.join(' | ')}`);
   }
 
   async getTweetReplies(tweetId: string, maxResults: number = 100): Promise<{ data: Array<{ id: string; text: string; author_id: string; created_at: string }> }>
   {
+    // Keep basic path; adjust with override if needed in future
     return this.request('/tweet/replies', { tweet_id: tweetId, max_results: maxResults });
+  }
+
+  private buildHeaderAttempts() {
+    const attempts: Array<Record<string, string>> = [];
+    if (this.authStyle === 'x-api-key') attempts.push({ 'X-API-Key': this.apiKey! });
+    if (this.authStyle === 'bearer') attempts.push({ Authorization: `Bearer ${this.apiKey}` });
+    if (this.authStyle === 'apikey') attempts.push({ apikey: this.apiKey! });
+    attempts.push({ 'X-API-Key': this.apiKey! });
+    attempts.push({ 'X-API-KEY': this.apiKey! });
+    attempts.push({ Authorization: `Bearer ${this.apiKey}` });
+    attempts.push({ apikey: this.apiKey! });
+    return attempts;
   }
 }
