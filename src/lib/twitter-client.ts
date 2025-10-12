@@ -52,6 +52,23 @@ export class TwitterAPIClient {
   private profilePathOverride = process.env.TWITTER_API_PROFILE_PATH;
   private tweetsPathOverride = process.env.TWITTER_API_TWEETS_PATH;
   private repliesPathOverride = process.env.TWITTER_API_REPLIES_PATH;
+  private logs: Array<{ url: string; headerStyle: string; status: number; bodySample?: string; error?: string }>= [];
+
+  private record(url: string, headers: Record<string,string>, status: number, body?: string, error?: string) {
+    const sampleLen = parseInt(process.env.DEBUG_TWITTER_BODY_LEN || '400', 10);
+    const headerStyle = headers['X-API-Key'] ? 'x-api-key'
+      : headers['X-API-KEY'] ? 'x-api-key'
+      : headers['Authorization'] ? 'bearer'
+      : headers['apikey'] ? 'apikey'
+      : 'unknown';
+    this.logs.push({ url, headerStyle, status, bodySample: body ? body.slice(0, sampleLen) : undefined, error });
+  }
+
+  public consumeLogs() {
+    const out = this.logs.slice();
+    this.logs = [];
+    return out;
+  }
 
   private async request<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
     if (!this.apiKey) throw new Error('Falta TWITTER_API_KEY');
@@ -64,9 +81,16 @@ export class TwitterAPIClient {
     for (const base of bases) {
       for (const headers of headerSets) {
         const url = `${base}${path}${qs}`;
-        const res = await fetch(url, { headers });
-        if (res.ok) return res.json();
-        errs.push(`${res.status} ${url}`);
+        try {
+          const res = await fetch(url, { headers });
+          const txt = await res.text().catch(()=> '');
+          this.record(url, headers, res.status, txt);
+          if (res.ok) return JSON.parse(txt || '{}');
+          errs.push(`${res.status} ${url}`);
+        } catch (e: any) {
+          this.record(url, headers, 0, undefined, e.message);
+          errs.push(`err ${url}: ${e.message}`);
+        }
       }
     }
     throw new Error(`Twitter API request failed: ${errs.join(' | ')}`);
@@ -88,8 +112,11 @@ export class TwitterAPIClient {
         for (const p of paramsVariants) {
           try {
             const qs = Object.entries(p).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
-            const res = await fetch(`${base}${path}?${qs}`, { headers: h });
-            if (res.ok) return res.json();
+            const url = `${base}${path}?${qs}`;
+            const res = await fetch(url, { headers: h });
+            const txt = await res.text().catch(()=> '');
+            this.record(url, h, res.status, txt);
+            if (res.ok) return JSON.parse(txt || '{}');
             errs.push(`${res.status} ${base}${path}?${Object.keys(p).join(',')}`);
           } catch (e: any) {
             errs.push(`err ${base}${path}: ${e.message}`);
@@ -129,7 +156,9 @@ export class TwitterAPIClient {
               const qs = entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
               const url = `${base}${path}?${qs}`;
               const res = await fetch(url, { headers: h });
-              if (res.ok) return res.json();
+              const txt = await res.text().catch(()=> '');
+              this.record(url, h, res.status, txt);
+              if (res.ok) return JSON.parse(txt || '{}');
               errs.push(`${res.status} ${url}`);
             } catch (e: any) {
               errs.push(`err ${base}${path}: ${e.message}`);
@@ -153,8 +182,11 @@ export class TwitterAPIClient {
         const qs = Object.entries(params)
           .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
           .join('&');
-        const res = await fetch(`${base}${path}?${qs}`, { headers: h });
-        if (res.ok) return res.json();
+        const url = `${base}${path}?${qs}`;
+        const res = await fetch(url, { headers: h });
+        const txt = await res.text().catch(()=> '');
+        this.record(url, h, res.status, txt);
+        if (res.ok) return JSON.parse(txt || '{}');
         errs.push(`${res.status} ${base}${path}?${Object.keys(params).join(',')}`);
       }
     }

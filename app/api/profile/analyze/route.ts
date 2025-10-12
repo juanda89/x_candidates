@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
     const tweetListRaw: any = tweetsResp?.tweets ?? tweetsResp?.data ?? tweetsResp?.items ?? [];
     const tweetList: any[] = Array.isArray(tweetListRaw) ? tweetListRaw : [];
     if (debug) {
+      const apiCalls = twitter.consumeLogs();
+      console.log('analyze/twitter-calls', apiCalls);
       console.log('analyze: last_tweets result', {
         userId: normUserId,
         userName: normUsername,
@@ -207,13 +209,19 @@ export async function POST(req: NextRequest) {
       if (error) throw error;
     }
 
-    return NextResponse.json({
+    const responsePayload: any = {
       ok: true,
       username: normUsername,
       profile_id: upsertedProfile.id,
       tweets_processed: savedTweets?.length ?? 0,
-      ...(debug ? { debug: { tweets_received: tweetList.length } } : {}),
-    });
+    };
+    if (debug) {
+      responsePayload.debug = {
+        tweets_received: tweetList.length,
+        twitter_calls: twitter.consumeLogs(),
+      };
+    }
+    return NextResponse.json(responsePayload);
   } catch (e: any) {
     console.error(e);
     return NextResponse.json({ error: e.message || 'internal_error' }, { status: 500 });
