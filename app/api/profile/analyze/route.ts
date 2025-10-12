@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (upsertErr) throw upsertErr;
 
     // 3) Obtener tweets (100)
-    const tweetsResp = await twitter.getUserTweets(profile.id, 100);
+    const tweetsResp = await twitter.getUserTweets(profile.id, 100, profile.username);
 
     // Map y upsert tweets
     const tweetRows = tweetsResp.data.map((t) => {

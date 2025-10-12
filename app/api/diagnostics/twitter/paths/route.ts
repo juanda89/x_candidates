@@ -9,11 +9,16 @@ const headers = [
 ];
 
 const candidates: Array<{ path: string; mode: 'query'|'path'; key?: string }> = [
+  { path: '/twitter/user/info', mode: 'query', key: 'username' },
+  { path: '/twitter/user/info', mode: 'query', key: 'screen_name' },
   { path: '/twitter/user/profile', mode: 'query', key: 'username' },
   { path: '/user/profile', mode: 'query', key: 'username' },
   { path: '/users/by/username', mode: 'path' },
   { path: '/twitter/users/by/username', mode: 'path' },
   { path: '/users/profile', mode: 'query', key: 'username' },
+  // Replies path candidates
+  { path: '/twitter/tweet/replies', mode: 'query', key: 'tweetId' },
+  { path: '/twitter/tweet/replies', mode: 'query', key: 'tweet_id' },
 ];
 
 export async function GET(req: NextRequest) {
@@ -37,4 +42,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e.message || 'internal_error' }, { status: 500 });
   }
 }
-

@@ -36,6 +36,7 @@ export class TwitterAPIClient {
   private authStyle = (process.env.TWITTER_API_AUTH_STYLE || 'x-api-key').toLowerCase();
   private profilePathOverride = process.env.TWITTER_API_PROFILE_PATH;
   private tweetsPathOverride = process.env.TWITTER_API_TWEETS_PATH;
+  private repliesPathOverride = process.env.TWITTER_API_REPLIES_PATH;
 
   private async request<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
     if (!this.apiKey) throw new Error('Falta TWITTER_API_KEY');
@@ -136,8 +137,24 @@ export class TwitterAPIClient {
 
   async getTweetReplies(tweetId: string, maxResults: number = 100): Promise<{ data: Array<{ id: string; text: string; author_id: string; created_at: string }> }>
   {
-    // Keep basic path; adjust with override if needed in future
-    return this.request('/tweet/replies', { tweet_id: tweetId, max_results: maxResults });
+    const path = this.repliesPathOverride || '/twitter/tweet/replies';
+    // Try param names commonly used by providers
+    const headerSets = this.buildHeaderAttempts();
+    const candidates: Array<Record<string,string|number>> = [
+      { tweetId, max_results: maxResults },
+      { tweet_id: tweetId, max_results: maxResults },
+      { id: tweetId, max_results: maxResults },
+    ];
+    const errs: string[] = [];
+    for (const h of headerSets) {
+      for (const p of candidates) {
+        const qs = Object.entries(p).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
+        const res = await fetch(`${this.baseURL}${path}?${qs}`, { headers: h });
+        if (res.ok) return res.json();
+        errs.push(`${res.status} ${path}?${Object.keys(p).join(',')}`);
+      }
+    }
+    throw new Error(`Twitter replies error: tried ${errs.join(' | ')}`);
   }
 
   private buildHeaderAttempts() {
