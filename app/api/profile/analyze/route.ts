@@ -22,16 +22,17 @@ export async function POST(req: NextRequest) {
     // 1) Obtener perfil
     const profile = await twitter.getUserProfile(handle);
     const p: any = profile as any;
-    const base = p?.data?.user ?? p?.data ?? p?.user ?? p?.result ?? p;
-    const normUserId = base?.id ?? base?.user_id ?? base?.id_str ?? base?.userId;
-    const normUsername = base?.username ?? base?.userName ?? base?.screen_name ?? base?.handle ?? handle;
-    const normName = base?.name ?? base?.display_name ?? null;
-    const normImage = base?.profile_image_url ?? base?.profile_image ?? base?.profileImageUrl ?? null;
-    const normBio = base?.description ?? base?.bio ?? null;
-    const metrics = base?.public_metrics ?? {
-      followers_count: base?.followers_count ?? base?.followersCount ?? null,
-      following_count: base?.following_count ?? base?.followingCount ?? null,
-      tweet_count: base?.tweet_count ?? base?.tweetsCount ?? null,
+    // Según la especificación recibida, la forma es { data: { ...usuario } }
+    const base = p?.data ?? p;
+    const normUserId = String(base?.id ?? '');
+    const normUsername = String(base?.userName ?? handle);
+    const normName = base?.name ?? null;
+    const normImage = base?.profilePicture ?? null;
+    const normBio = base?.description ?? base?.profile_bio?.description ?? null;
+    const metrics = {
+      followers_count: base?.followers ?? null,
+      following_count: base?.following ?? null,
+      tweet_count: base?.statusesCount ?? null,
     };
 
     if (!normUserId) {
@@ -42,17 +43,17 @@ export async function POST(req: NextRequest) {
     const { data: upsertedProfile, error: upsertErr } = await supabase
       .from('profiles')
       .upsert({
-        twitter_user_id: String(normUserId),
-        twitter_username: String(normUsername),
+        twitter_user_id: normUserId,
+        twitter_username: normUsername,
         display_name: normName,
         profile_image_url: normImage,
         bio: normBio,
         followers_count: metrics?.followers_count ?? null,
         following_count: metrics?.following_count ?? null,
         tweet_count: metrics?.tweet_count ?? null,
-        verified: base?.verified ?? base?.isVerified ?? null,
-        created_at_twitter: (base?.created_at || base?.createdAt)
-          ? new Date(base?.created_at || base?.createdAt).toISOString()
+        verified: base?.isBlueVerified ?? null,
+        created_at_twitter: (base?.createdAt)
+          ? new Date(base?.createdAt).toISOString()
           : null,
         last_synced: new Date().toISOString(),
       }, { onConflict: 'twitter_user_id' })
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
     if (upsertErr) throw upsertErr;
 
     // 3) Obtener tweets (100)
-    const tweetsResp = await twitter.getUserTweets(profile.id, 100, profile.username);
+    const tweetsResp = await twitter.getUserTweets(normUserId, 100, normUsername);
     // twitterapi.io may return tweets array under different keys
     // @ts-ignore
     const tweetList: any[] = tweetsResp?.data || tweetsResp?.tweets || tweetsResp?.items || [];
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
         retweets_count: rts,
         replies_count: replies,
         quotes_count: pm.quote_count ?? pm.quotes_count ?? 0,
-        url: `https://x.com/${profile.username}/status/${t.id}`,
+        url: `https://x.com/${normUsername}/status/${t.id}`,
         is_reply: false,
         is_retweet: false,
         language: null as string | null,
