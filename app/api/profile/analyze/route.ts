@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
     // Upsert por lote en chunks (Supabase limita tamaño de payload)
     const chunkSize = 100;
     const allTweetIds: string[] = [];
+    const upsertStats: Array<{ chunk: number; size: number; returned: number }> = [];
     for (let i = 0; i < tweetRows.length; i += chunkSize) {
       const chunk = tweetRows.slice(i, i + chunkSize);
       const { data, error } = await supabase
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
         .select('id,tweet_id');
       if (error) throw error;
       data?.forEach((r) => allTweetIds.push(r.id));
+      upsertStats.push({ chunk: i / chunkSize + 1, size: chunk.length, returned: data?.length || 0 });
     }
 
     // Leer tweets de este perfil para obtener sus UUIDs
@@ -218,6 +220,8 @@ export async function POST(req: NextRequest) {
     if (debug) {
       responsePayload.debug = {
         tweets_received: tweetList.length,
+        upsert_stats: upsertStats,
+        saved_after_upsert: savedTweets?.length ?? 0,
         twitter_calls: twitter.consumeLogs(),
       };
     }
