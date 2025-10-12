@@ -49,7 +49,7 @@ function AnalisisInner() {
         const { data: prof, error: e1 } = await supabase
           .from('profiles')
           .select('id')
-          .eq('twitter_username', username)
+          .ilike('twitter_username', username)
           .maybeSingle();
         if (e1) throw e1;
         if (!prof) throw new Error('Perfil no encontrado. Corre el análisis primero.');
