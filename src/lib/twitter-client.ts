@@ -101,27 +101,50 @@ export class TwitterAPIClient {
   }
 
   async getUserTweets(userId: string, count: number = 100, username?: string): Promise<LastTweetsResponse> {
-    // Definitive endpoint: /twitter/user/last_tweets with user_id or username and count
-    const path = this.tweetsPathOverride || '/twitter/user/last_tweets';
+    // Endpoint family per provider: prefer /twitter/user/last_tweets, but try common variants
+    const pathCandidates = [
+      this.tweetsPathOverride,
+      '/twitter/user/last_tweets',
+      '/twitter/user/lastTweets',
+      '/twitter/user/tweets',
+      '/user/last_tweets',
+      '/user/tweets',
+    ].filter(Boolean) as string[];
+
     const headerSets = this.buildHeaderAttempts();
-    const candidates: Array<Record<string, string | number | undefined>> = [
-      { user_id: userId, count },
-      { username, count },
-    ];
+
+    // Param name variants: user_id | userId | username | userName; count | limit | max_results
+    const baseParams: Array<Record<string, string | number | undefined>> = [];
+    baseParams.push({ user_id: userId, count });
+    baseParams.push({ userId: userId, count });
+    baseParams.push({ username, count });
+    baseParams.push({ userName: username, count });
+    baseParams.push({ user_id: userId, limit: count });
+    baseParams.push({ userId: userId, limit: count });
+    baseParams.push({ username, limit: count });
+    baseParams.push({ userName: username, limit: count });
+    baseParams.push({ user_id: userId, max_results: count });
+    baseParams.push({ userId: userId, max_results: count });
+    baseParams.push({ username, max_results: count });
+    baseParams.push({ userName: username, max_results: count });
+
     const errs: string[] = [];
     for (const base of this.getBaseCandidates()) {
       for (const h of headerSets) {
-        for (const p of candidates) {
-          try {
-            const qs = Object.entries(p)
-              .filter(([,v]) => v !== undefined)
-              .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-              .join('&');
-            const res = await fetch(`${base}${path}?${qs}`, { headers: h });
-            if (res.ok) return res.json();
-            errs.push(`${res.status} ${base}${path}?${Object.keys(p).join(',')}`);
-          } catch (e: any) {
-            errs.push(`err ${base}${path}: ${e.message}`);
+        for (const path of pathCandidates) {
+          for (const p of baseParams) {
+            try {
+              const qs = Object.entries(p)
+                .filter(([,v]) => v !== undefined)
+                .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+                .join('&');
+              const url = `${base}${path}?${qs}`;
+              const res = await fetch(url, { headers: h });
+              if (res.ok) return res.json();
+              errs.push(`${res.status} ${url}`);
+            } catch (e: any) {
+              errs.push(`err ${base}${path}: ${e.message}`);
+            }
           }
         }
       }
