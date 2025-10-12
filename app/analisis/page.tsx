@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase-client';
 
@@ -30,7 +30,7 @@ type ScoreRow = {
   like_rate: number | null;
 };
 
-export default function AnalisisPage() {
+function AnalisisInner() {
   const params = useSearchParams();
   const username = params.get('username') || '';
   const [loading, setLoading] = useState(false);
@@ -140,5 +140,13 @@ export default function AnalisisPage() {
         </tbody>
       </table>
     </main>
+  );
+}
+
+export default function AnalisisPage() {
+  return (
+    <Suspense fallback={<main style={{ padding: 24 }}>Cargando análisis…</main>}>
+      <AnalisisInner />
+    </Suspense>
   );
 }
