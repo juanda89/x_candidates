@@ -43,6 +43,12 @@ Construir una aplicación que analice perfiles de X/Twitter: ingesta de perfil y
 - Costes de LLM/embeddings: batch, truncado, reuso de embeddings y jobs diferidos.
 - Cumplimiento/privacidad: definir retención de contenido de X y términos de uso.
 
+## Seguridad y Manejo de Secretos
+- Nunca versionar credenciales; `.env.example` solo usa placeholders. Las claves reales viven en Vercel (Project Settings → Environment Variables).
+- Rotación: regenerar claves si se exponen (Supabase: Anon/Service Role; Twitter; Gemini). Evitar usar Service Role en el cliente.
+- RLS en tablas públicas; accesos de escritura solo desde server (rutas/Edge Functions) con Service Role.
+- Auditoría mínima: logs de ingesta y cambios de categorías políticas.
+
 ## Próximos Pasos (acción)
 1) Crear migraciones de tablas + índices + extensión `pgvector` y RLS básica.
 2) Añadir `.env.example` y scripts de setup (incl. generación de tipos de Supabase).
