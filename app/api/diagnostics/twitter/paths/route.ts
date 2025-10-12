@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BASE = process.env.TWITTER_API_BASE_URL || 'https://api.twitterapi.io/v1';
+const BASE = process.env.TWITTER_API_BASE_URL || 'https://api.twitterapi.io';
 const KEY = process.env.TWITTER_API_KEY || '';
 
 const headerVariants: Record<string, string>[] = KEY
@@ -29,18 +29,21 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const username = searchParams.get('username') || 'jack';
     const results: any[] = [];
-    for (const h of headerVariants) {
-      for (const c of candidates) {
-        const url = c.mode === 'path'
-          ? `${BASE}${c.path}/${encodeURIComponent(username)}`
-          : `${BASE}${c.path}?${encodeURIComponent(c.key || 'username')}=${encodeURIComponent(username)}`;
-        const res = await fetch(url, { headers: h });
-        const body = await res.text().catch(()=> '');
-        results.push({ header: Object.keys(h)[0], path: c.path, mode: c.mode, status: res.status, sample: body.slice(0, 300) });
-        if (res.ok) return NextResponse.json({ ok: true, url, header: Object.keys(h)[0], status: res.status, sample: body.slice(0, 300) });
+    const baseCandidates = [BASE.replace(/\/$/, ''), BASE.replace(/\/$/, '') + '/v1'];
+    for (const base of baseCandidates) {
+      for (const h of headerVariants) {
+        for (const c of candidates) {
+          const url = c.mode === 'path'
+            ? `${base}${c.path}/${encodeURIComponent(username)}`
+            : `${base}${c.path}?${encodeURIComponent(c.key || 'username')}=${encodeURIComponent(username)}`;
+          const res = await fetch(url, { headers: h });
+          const body = await res.text().catch(()=> '');
+          results.push({ base, header: Object.keys(h)[0], path: c.path, mode: c.mode, status: res.status, sample: body.slice(0, 300) });
+          if (res.ok) return NextResponse.json({ ok: true, url, base, header: Object.keys(h)[0], status: res.status, sample: body.slice(0, 300) });
+        }
       }
     }
-    return NextResponse.json({ ok: false, base: BASE, tried: results });
+    return NextResponse.json({ ok: false, baseCandidates, tried: results });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'internal_error' }, { status: 500 });
   }
