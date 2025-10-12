@@ -69,8 +69,9 @@ export async function POST(req: NextRequest) {
     // @ts-ignore
     const tweetListRaw: any = tweetsResp?.tweets ?? tweetsResp?.data ?? tweetsResp?.items ?? [];
     const tweetList: any[] = Array.isArray(tweetListRaw) ? tweetListRaw : [];
+    let apiCalls: any[] | undefined;
     if (debug) {
-      const apiCalls = twitter.consumeLogs();
+      apiCalls = twitter.consumeLogs();
       console.log('analyze/twitter-calls', apiCalls);
       console.log('analyze: last_tweets result', {
         userId: normUserId,
@@ -222,7 +223,7 @@ export async function POST(req: NextRequest) {
         tweets_received: tweetList.length,
         upsert_stats: upsertStats,
         saved_after_upsert: savedTweets?.length ?? 0,
-        twitter_calls: twitter.consumeLogs(),
+        twitter_calls: apiCalls,
       };
     }
     return NextResponse.json(responsePayload);
