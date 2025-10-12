@@ -3,10 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 const BASE = process.env.TWITTER_API_BASE_URL || 'https://api.twitterapi.io/v1';
 const KEY = process.env.TWITTER_API_KEY || '';
 
-const headers = [
-  { 'X-API-Key': KEY },
-  { Authorization: `Bearer ${KEY}` },
-];
+const headerVariants: Record<string, string>[] = KEY
+  ? [
+      { 'X-API-Key': KEY },
+      { Authorization: `Bearer ${KEY}` },
+    ]
+  : [];
 
 const candidates: Array<{ path: string; mode: 'query'|'path'; key?: string }> = [
   { path: '/twitter/user/info', mode: 'query', key: 'userName' },
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const username = searchParams.get('username') || 'jack';
     const results: any[] = [];
-    for (const h of headers) {
+    for (const h of headerVariants) {
       for (const c of candidates) {
         const url = c.mode === 'path'
           ? `${BASE}${c.path}/${encodeURIComponent(username)}`
