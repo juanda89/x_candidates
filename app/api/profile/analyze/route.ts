@@ -44,11 +44,14 @@ export async function POST(req: NextRequest) {
 
     // 3) Obtener tweets (100)
     const tweetsResp = await twitter.getUserTweets(profile.id, 100, profile.username);
+    // twitterapi.io may return tweets array under different keys
+    // @ts-ignore
+    const tweetList: any[] = tweetsResp?.data || tweetsResp?.tweets || tweetsResp?.items || [];
 
     // Map y upsert tweets
-    const tweetRows = tweetsResp.data.map((t) => {
+    const tweetRows = tweetList.map((t) => {
       const pm = t.public_metrics || {} as any;
-      const views = pm.impression_count ?? 0;
+      const views = pm.impression_count ?? pm.impressions ?? pm.view_count ?? 0;
       const likes = pm.like_count ?? 0;
       const rts = pm.retweet_count ?? 0;
       const replies = pm.reply_count ?? 0;
@@ -56,12 +59,12 @@ export async function POST(req: NextRequest) {
         profile_id: upsertedProfile.id,
         tweet_id: t.id,
         text: t.text,
-        created_at_twitter: new Date(t.created_at).toISOString(),
+        created_at_twitter: new Date(t.created_at || t.createdAt || t.time || Date.now()).toISOString(),
         views_count: views,
         likes_count: likes,
         retweets_count: rts,
         replies_count: replies,
-        quotes_count: pm.quote_count ?? 0,
+        quotes_count: pm.quote_count ?? pm.quotes_count ?? 0,
         url: `https://x.com/${profile.username}/status/${t.id}`,
         is_reply: false,
         is_retweet: false,

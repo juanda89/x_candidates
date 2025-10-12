@@ -71,68 +71,56 @@ export class TwitterAPIClient {
   }
 
   async getUserProfile(username: string): Promise<TwitterProfileResponse> {
-    const candidates: Array<{ path: string; asPathParam?: boolean; paramKeys?: string[] }> = [];
-    if (this.profilePathOverride) candidates.push({ path: this.profilePathOverride, paramKeys: ['username','screen_name','handle'] });
-    candidates.push(
-      { path: '/twitter/user/profile', paramKeys: ['username','screen_name','handle'] },
-      { path: '/user/profile', paramKeys: ['username','screen_name','handle'] },
-      { path: '/users/by/username', asPathParam: true },
-      { path: '/twitter/users/by/username', asPathParam: true },
-    );
-
+    // Definitive endpoint: /twitter/user/info with param userName
+    const path = this.profilePathOverride || '/twitter/user/info';
     const headerSets = this.buildHeaderAttempts();
+    const paramsVariants = [
+      { userName: username },
+      { username },
+      { screen_name: username },
+      { handle: username },
+    ];
     const errs: string[] = [];
     for (const h of headerSets) {
-      for (const c of candidates) {
+      for (const p of paramsVariants) {
         try {
-          if (c.asPathParam) {
-            const res = await fetch(`${this.baseURL}${c.path}/${encodeURIComponent(username)}`, { headers: h });
-            if (res.ok) return res.json();
-            errs.push(`${res.status} ${c.path}/:username`);
-            continue;
-          }
-          const keys = c.paramKeys || ['username'];
-          for (const k of keys) {
-            const res = await fetch(`${this.baseURL}${c.path}?${k}=${encodeURIComponent(username)}`, { headers: h });
-            if (res.ok) return res.json();
-            errs.push(`${res.status} ${c.path}?${k}=`);
-          }
+          const qs = Object.entries(p).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
+          const res = await fetch(`${this.baseURL}${path}?${qs}`, { headers: h });
+          if (res.ok) return res.json();
+          errs.push(`${res.status} ${path}?${Object.keys(p).join(',')}`);
         } catch (e: any) {
-          errs.push(`err ${c.path}: ${e.message}`);
+          errs.push(`err ${path}: ${e.message}`);
         }
       }
     }
-    throw new Error(`Twitter profile error: tried paths/auth ${errs.join(' | ')}`);
+    throw new Error(`Twitter profile error: tried ${errs.join(' | ')}`);
   }
 
-  async getUserTweets(userId: string, maxResults: number = 100, username?: string): Promise<TwitterTweetsResponse> {
-    const candidates: Array<{ path: string; params: Record<string,string|number|undefined> }>= [];
-    const basePath = this.tweetsPathOverride || '/twitter/user/tweets';
-    candidates.push(
-      { path: basePath, params: { user_id: userId, max_results: maxResults } },
-      { path: basePath, params: { username: username, max_results: maxResults } },
-      { path: '/user/tweets', params: { user_id: userId, max_results: maxResults } },
-      { path: '/user/tweets', params: { username: username, max_results: maxResults } },
-    );
-
+  async getUserTweets(userId: string, count: number = 100, username?: string): Promise<TwitterTweetsResponse> {
+    // Definitive endpoint: /twitter/user/last_tweets with user_id or username and count
+    const path = this.tweetsPathOverride || '/twitter/user/last_tweets';
     const headerSets = this.buildHeaderAttempts();
+    const candidates: Array<Record<string, string | number | undefined>> = [
+      { user_id: userId, count },
+      { username, count },
+    ];
     const errs: string[] = [];
     for (const h of headerSets) {
-      for (const c of candidates) {
+      for (const p of candidates) {
         try {
-          const qs = Object.entries(c.params)
+          const qs = Object.entries(p)
             .filter(([,v]) => v !== undefined)
             .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
             .join('&');
-          const res = await fetch(`${this.baseURL}${c.path}?${qs}`, { headers: h });
+          const res = await fetch(`${this.baseURL}${path}?${qs}`, { headers: h });
           if (res.ok) return res.json();
-          errs.push(`${res.status} ${c.path}?${Object.keys(c.params).join(',')}`);
+          errs.push(`${res.status} ${path}?${Object.keys(p).join(',')}`);
         } catch (e: any) {
-          errs.push(`err ${c.path}: ${e.message}`);
+          errs.push(`err ${path}: ${e.message}`);
         }
       }
     }
-    throw new Error(`Twitter tweets error: tried paths/auth ${errs.join(' | ')}`);
+    throw new Error(`Twitter tweets error: tried ${errs.join(' | ')}`);
   }
 
   async getTweetReplies(tweetId: string, maxResults: number = 100): Promise<{ data: Array<{ id: string; text: string; author_id: string; created_at: string }> }>
