@@ -100,44 +100,33 @@ export class TwitterAPIClient {
     throw new Error(`Twitter profile error: tried ${errs.join(' | ')}`);
   }
 
-  async getUserTweets(userId: string, count: number = 100, username?: string): Promise<LastTweetsResponse> {
-    // Endpoint family per provider: prefer /twitter/user/last_tweets, but try common variants
+  async getUserTweets(
+    userId: string | null,
+    userName?: string,
+    cursor?: string,
+    includeReplies: boolean = false
+  ): Promise<LastTweetsResponse> {
+    // Per docs: GET /twitter/user/last_tweets with userId or userName, optional cursor/includeReplies
     const pathCandidates = [
       this.tweetsPathOverride,
       '/twitter/user/last_tweets',
-      '/twitter/user/lastTweets',
-      '/twitter/user/tweets',
-      '/user/last_tweets',
-      '/user/tweets',
     ].filter(Boolean) as string[];
 
     const headerSets = this.buildHeaderAttempts();
 
-    // Param name variants: user_id | userId | username | userName; count | limit | max_results
-    const baseParams: Array<Record<string, string | number | undefined>> = [];
-    baseParams.push({ user_id: userId, count });
-    baseParams.push({ userId: userId, count });
-    baseParams.push({ username, count });
-    baseParams.push({ userName: username, count });
-    baseParams.push({ user_id: userId, limit: count });
-    baseParams.push({ userId: userId, limit: count });
-    baseParams.push({ username, limit: count });
-    baseParams.push({ userName: username, limit: count });
-    baseParams.push({ user_id: userId, max_results: count });
-    baseParams.push({ userId: userId, max_results: count });
-    baseParams.push({ username, max_results: count });
-    baseParams.push({ userName: username, max_results: count });
+    const paramsList: Array<Record<string, string | number | boolean | undefined>> = [
+      { userId: userId || undefined, userName: undefined, cursor, includeReplies },
+      { userId: undefined, userName, cursor, includeReplies },
+    ];
 
     const errs: string[] = [];
     for (const base of this.getBaseCandidates()) {
       for (const h of headerSets) {
         for (const path of pathCandidates) {
-          for (const p of baseParams) {
+          for (const p of paramsList) {
             try {
-              const qs = Object.entries(p)
-                .filter(([,v]) => v !== undefined)
-                .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-                .join('&');
+              const entries = Object.entries(p).filter(([, v]) => v !== undefined);
+              const qs = entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
               const url = `${base}${path}?${qs}`;
               const res = await fetch(url, { headers: h });
               if (res.ok) return res.json();

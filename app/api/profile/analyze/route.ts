@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     if (upsertErr) throw upsertErr;
 
     // 3) Obtener tweets (100)
-    const tweetsResp = await twitter.getUserTweets(normUserId, 100, normUsername);
+    const tweetsResp = await twitter.getUserTweets(normUserId, normUsername, undefined, false);
     // twitterapi.io returns { tweets: [...] } for last_tweets
     // but keep fallbacks for safety
     // @ts-ignore
