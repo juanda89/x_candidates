@@ -11,6 +11,8 @@ function extractUsername(raw: string): string {
 export async function POST(req: NextRequest) {
   try {
     const { username } = await req.json();
+    const url = new URL(req.url);
+    const debug = url.searchParams.get('debug') === '1';
     if (!username || typeof username !== 'string') {
       return NextResponse.json({ error: 'username requerido' }, { status: 400 });
     }
@@ -67,6 +69,13 @@ export async function POST(req: NextRequest) {
     // @ts-ignore
     const tweetListRaw: any = tweetsResp?.tweets ?? tweetsResp?.data ?? tweetsResp?.items ?? [];
     const tweetList: any[] = Array.isArray(tweetListRaw) ? tweetListRaw : [];
+    if (debug) {
+      console.log('analyze: last_tweets result', {
+        userId: normUserId,
+        userName: normUsername,
+        tweets: tweetList.length,
+      });
+    }
 
     // Map y upsert tweets
     const tweetRows = tweetList.map((t) => {
@@ -203,6 +212,7 @@ export async function POST(req: NextRequest) {
       username: normUsername,
       profile_id: upsertedProfile.id,
       tweets_processed: savedTweets?.length ?? 0,
+      ...(debug ? { debug: { tweets_received: tweetList.length } } : {}),
     });
   } catch (e: any) {
     console.error(e);
