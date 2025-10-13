@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase-client';
 
@@ -16,7 +16,7 @@ type Category = {
   updated_at: string;
 };
 
-export default function CategoriasPage() {
+function CategoriasInner() {
   const params = useSearchParams();
   const username = params.get('username') || '';
   const [loading, setLoading] = useState(false);
@@ -117,6 +117,14 @@ export default function CategoriasPage() {
         {rows.length === 0 && !loading && <p className="p-4">No hay categorías aún. Pulsa “Generar con LLM”.</p>}
       </div>
     </main>
+  );
+}
+
+export default function CategoriasPage() {
+  return (
+    <Suspense fallback={<main><p className="text-sm text-[var(--muted)]">Cargando categorías…</p></main>}>
+      <CategoriasInner />
+    </Suspense>
   );
 }
 
