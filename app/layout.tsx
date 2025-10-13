@@ -10,10 +10,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0 }}>
-        {children}
+      <body className="min-h-screen antialiased">
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {children}
+        </div>
       </body>
     </html>
   );
 }
-
+import './globals.css';

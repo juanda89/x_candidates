@@ -155,7 +155,9 @@ export async function GET(req: NextRequest) {
         const engagement_rate = Math.round((engageSum / k) * 100) / 100;
 
         const scoreMap = new Map<string, number>();
-        scores.forEach((s) => scoreMap.set(s.tweet_id, s.normalized_score || 0));
+        scores.forEach((s) => {
+          if (s.tweet_id) scoreMap.set(String(s.tweet_id), s.normalized_score || 0);
+        });
         const score_avg = scores.length
           ? Math.round((scores.reduce((acc, s) => acc + (s.normalized_score || 0), 0) / scores.length) * 100) / 100
           : 0;
@@ -196,4 +198,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: e.message || 'internal_error' }, { status: 500 });
   }
 }
-

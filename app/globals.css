@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Simple design tokens */
+:root {
+  --bg: #0b1020;
+  --fg: #e6e9f0;
+  --muted: #97a1b1;
+  --card: #121931;
+  --accent: #5b93ff;
+}
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); }
+
+.card { @apply bg-[var(--card)] rounded-md border border-white/5; }
+.badge { @apply inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-white/10; }
+.btn { @apply inline-flex items-center gap-2 rounded bg-[var(--accent)] text-white px-3 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50; }
+.input { @apply rounded bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]; }
+
+/* Sticky table header helper */
+.table-sticky thead th { @apply sticky top-0 bg-[var(--card)] z-10; }
+
