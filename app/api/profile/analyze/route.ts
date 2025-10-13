@@ -65,10 +65,11 @@ export async function POST(req: NextRequest) {
 
     // 3) Obtener tweets (100)
     const tweetsResp = await twitter.getUserTweets(normUserId, normUsername, undefined, false);
-    // twitterapi.io returns { tweets: [...] } for last_tweets; guard for safety
-    // @ts-ignore
-    const tweetListRaw: any = tweetsResp?.tweets ?? tweetsResp?.data ?? tweetsResp?.items ?? [];
-    const tweetList: any[] = Array.isArray(tweetListRaw) ? tweetListRaw : [];
+    // Soporta formatos: { tweets: [...] } o { status, data: { tweets: [...] } }
+    const anyResp: any = tweetsResp as any;
+    const fromTop = Array.isArray(anyResp?.tweets) ? anyResp.tweets : null;
+    const fromData = Array.isArray(anyResp?.data?.tweets) ? anyResp.data.tweets : null;
+    const tweetList: any[] = fromTop || fromData || [];
     let apiCalls: any[] | undefined;
     if (debug) {
       apiCalls = twitter.consumeLogs();
@@ -77,6 +78,8 @@ export async function POST(req: NextRequest) {
         userId: normUserId,
         userName: normUsername,
         tweets: tweetList.length,
+        topLevelKeys: Object.keys(anyResp || {}),
+        dataKeys: anyResp?.data ? Object.keys(anyResp.data) : null,
       });
     }
 
@@ -224,6 +227,10 @@ export async function POST(req: NextRequest) {
         upsert_stats: upsertStats,
         saved_after_upsert: savedTweets?.length ?? 0,
         twitter_calls: apiCalls,
+        shape: {
+          topLevelKeys: Object.keys(anyResp || {}),
+          dataKeys: anyResp?.data ? Object.keys(anyResp.data) : null,
+        }
       };
     }
     return NextResponse.json(responsePayload);
