@@ -39,14 +39,14 @@ export default function CompararPage() {
   };
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>Comparativo de Cuentas</h1>
-      <form onSubmit={onSubmit} style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
+    <main>
+      <h1 className="text-2xl font-semibold">Comparativo de Cuentas</h1>
+      <form onSubmit={onSubmit} className="mt-3 flex items-center gap-2">
         <input
           value={users}
           onChange={(e) => setUsers(e.target.value)}
           placeholder="@user1, @user2 o URLs de X"
-          style={{ flex: 1, padding: 8 }}
+          className="input flex-1"
         />
         <input
           type="number"
@@ -55,52 +55,52 @@ export default function CompararPage() {
           value={n}
           onChange={(e) => setN(parseInt(e.target.value || '100', 10))}
           title="Cantidad de tweets a considerar"
-          style={{ width: 90, padding: 8 }}
+          className="input w-24"
         />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input type="checkbox" checked={autofill} onChange={(e) => setAutofill(e.target.checked)} />
+        <label className="text-xs text-[var(--muted)] flex items-center gap-2">
+          <input type="checkbox" className="accent-[var(--accent)]" checked={autofill} onChange={(e) => setAutofill(e.target.checked)} />
           Auto-analizar faltantes
         </label>
-        <button disabled={loading} type="submit" style={{ padding: '8px 16px' }}>
+        <button disabled={loading} type="submit" className="btn">
           {loading ? 'Comparando…' : 'Comparar'}
         </button>
       </form>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+      {error && <p className="text-red-400 mt-2">{error}</p>}
 
       {results && (
-        <div style={{ marginTop: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="card mt-4 overflow-auto">
+          <table className="w-full text-sm table-sticky">
             <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Usuario</th>
-                <th>Reach</th>
-                <th>RT rate %</th>
-                <th>Comment rate %</th>
-                <th>Like rate %</th>
-                <th>Engagement %</th>
-                <th>Score promedio</th>
-                <th>Top 3</th>
+              <tr className="text-left border-b border-white/5">
+                <th className="py-2 px-3">Usuario</th>
+                <th className="py-2 px-3 text-right">Reach</th>
+                <th className="py-2 px-3 text-right">RT rate %</th>
+                <th className="py-2 px-3 text-right">Comment rate %</th>
+                <th className="py-2 px-3 text-right">Like rate %</th>
+                <th className="py-2 px-3 text-right">Engagement %</th>
+                <th className="py-2 px-3 text-right">Score promedio</th>
+                <th className="py-2 px-3">Top 3</th>
               </tr>
             </thead>
             <tbody>
               {results.map((r) => (
-                <tr key={r.username} style={{ borderTop: '1px solid #eee' }}>
-                  <td>@{r.username} {r.status !== 'ok' && <em style={{ color: '#c00' }}>({r.status})</em>}</td>
-                  <td style={{ textAlign: 'right' }}>{r.totals?.reach ?? '-'}</td>
-                  <td style={{ textAlign: 'right' }}>{r.rates?.retweet_rate ?? '-'}</td>
-                  <td style={{ textAlign: 'right' }}>{r.rates?.comment_rate ?? '-'}</td>
-                  <td style={{ textAlign: 'right' }}>{r.rates?.like_rate ?? '-'}</td>
-                  <td style={{ textAlign: 'right' }}>{r.rates?.engagement_rate ?? '-'}</td>
-                  <td style={{ textAlign: 'right' }}>{r.score_avg ?? '-'}</td>
-                  <td>
+                <tr key={r.username} className="border-t border-white/5">
+                  <td className="py-2 px-3">@{r.username} {r.status !== 'ok' && <em className="text-red-400">({r.status})</em>}</td>
+                  <td className="py-2 px-3 text-right">{r.totals?.reach ?? '-'}</td>
+                  <td className="py-2 px-3 text-right">{r.rates?.retweet_rate ?? '-'}</td>
+                  <td className="py-2 px-3 text-right">{r.rates?.comment_rate ?? '-'}</td>
+                  <td className="py-2 px-3 text-right">{r.rates?.like_rate ?? '-'}</td>
+                  <td className="py-2 px-3 text-right">{r.rates?.engagement_rate ?? '-'}</td>
+                  <td className="py-2 px-3 text-right">{r.score_avg ?? '-'}</td>
+                  <td className="py-2 px-3">
                     {r.top && r.top.length > 0 ? (
-                      <ol style={{ margin: 0, paddingLeft: 16 }}>
+                      <ol className="m-0 pl-4 list-decimal">
                         {r.top.map((t) => (
                           <li key={t.tweet_id}>
-                            <a href={t.url} target="_blank" rel="noreferrer">
+                            <a href={t.url} target="_blank" rel="noreferrer" className="underline">
                               {t.text?.slice(0, 60) || t.tweet_id}
                             </a>{' '}
-                            <small>({t.score?.toFixed(2)})</small>
+                            <span className="badge">{t.score?.toFixed(2)}</span>
                           </li>
                         ))}
                       </ol>
@@ -117,4 +117,3 @@ export default function CompararPage() {
     </main>
   );
 }
-

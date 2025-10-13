@@ -165,9 +165,9 @@ export async function GET(req: NextRequest) {
         // Top 3 by normalized_score
         const enriched = tweets.map((t) => ({
           tweet_id: t.id,
-          url: t.url,
-          text: t.text,
-          created_at: t.created_at_twitter,
+          url: t.url || undefined,
+          text: t.text || undefined,
+          created_at: t.created_at_twitter || undefined,
           score: scoreMap.get(t.id) || 0,
         }));
         enriched.sort((a, b) => (b.score || 0) - (a.score || 0));

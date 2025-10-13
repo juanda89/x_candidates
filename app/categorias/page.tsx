@@ -85,34 +85,37 @@ export default function CategoriasPage() {
   const rows = useMemo(() => cats, [cats]);
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>Categorías Políticas</h1>
-      {username && <p>Usuario: <b>@{username}</b></p>}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
-        <input type="number" min={20} max={300} value={n} onChange={(e) => setN(parseInt(e.target.value || '100', 10))} style={{ width: 100, padding: 6 }} />
-        <button onClick={onRegenerate} disabled={loading} style={{ padding: '6px 12px' }}>Generar con LLM</button>
+    <main>
+      <h1 className="text-2xl font-semibold">Categorías Políticas</h1>
+      {username && <p className="text-sm text-[var(--muted)]">Usuario: <b>@{username}</b></p>}
+      <div className="mt-3 flex items-center gap-3">
+        <input type="number" min={20} max={300} value={n} onChange={(e) => setN(parseInt(e.target.value || '100', 10))} className="input w-24" />
+        <button onClick={onRegenerate} disabled={loading} className="btn">Generar con LLM</button>
+        <a href={`/analisis?username=${encodeURIComponent(username)}`} className="btn">Ver análisis</a>
       </div>
-      {loading && <p>Cargando…</p>}
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+      {loading && <p className="text-sm text-[var(--muted)] mt-2">Cargando…</p>}
+      {error && <p className="text-red-400 mt-2">{error}</p>}
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left' }}>Categoría</th>
-            <th style={{ textAlign: 'left' }}>Posición</th>
-            <th>Conf.</th>
-            <th>Evidencia</th>
-            <th>Modificada</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((c) => (
-            <CategoryRow key={c.id} cat={c} onSave={onSave} />
-          ))}
-        </tbody>
-      </table>
-      {rows.length === 0 && !loading && <p>No hay categorías aún. Pulsa “Generar con LLM”.</p>}
+      <div className="card mt-4 overflow-auto">
+        <table className="w-full text-sm table-sticky">
+          <thead>
+            <tr className="text-left border-b border-white/5">
+              <th className="py-2 px-3">Categoría</th>
+              <th className="py-2 px-3">Posición</th>
+              <th className="py-2 px-3 text-right">Conf.</th>
+              <th className="py-2 px-3 text-right">Evidencia</th>
+              <th className="py-2 px-3 text-center">Modificada</th>
+              <th className="py-2 px-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => (
+              <CategoryRow key={c.id} cat={c} onSave={onSave} />
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && !loading && <p className="p-4">No hay categorías aún. Pulsa “Generar con LLM”.</p>}
+      </div>
     </main>
   );
 }
@@ -155,4 +158,3 @@ function CategoryRow({ cat, onSave }: { cat: Category; onSave: (name: string, te
     </tr>
   );
 }
-
