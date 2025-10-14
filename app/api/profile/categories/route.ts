@@ -67,7 +67,13 @@ export async function POST(req: NextRequest) {
 
     const texts = tweets.map((t) => t.text || '');
     const gemini = new GeminiClient();
-    const analysis = await gemini.analyzePoliticalPositions(texts);
+    let analysis = await gemini.analyzePoliticalPositions(texts);
+    // Normalizar nombre de categorías y fusionar duplicados
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const norm = require('@/lib/gemini-client');
+    if (norm && typeof norm.normalizeCategoriesOutput === 'function') {
+      analysis = norm.normalizeCategoriesOutput(analysis);
+    }
     const now = new Date().toISOString();
 
     // Respetar ediciones del usuario: no tocar categorías con is_user_modified=true
@@ -112,4 +118,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e.message || 'internal_error' }, { status: 500 });
   }
 }
-
