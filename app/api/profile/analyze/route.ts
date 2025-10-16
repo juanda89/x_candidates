@@ -22,8 +22,33 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
 
     // 1) Obtener perfil
-    const profile = await twitter.getUserProfile(handle);
-    const p: any = profile as any;
+    let p: any;
+    try {
+      const prof = await twitter.getUserProfile(handle);
+      p = prof as any;
+    } catch (_err) {
+      // Fallback: derivar perfil desde last_tweets.author (el provider lo devuelve)
+      try {
+        const lt: any = await twitter.getUserTweets(null, handle, undefined, false);
+        const arr = Array.isArray(lt?.tweets) ? lt.tweets : Array.isArray(lt?.data?.tweets) ? lt.data.tweets : [];
+        const author = arr[0]?.author;
+        if (!author) throw new Error('no_author_in_last_tweets');
+        p = { data: {
+          id: author.id,
+          userName: author.userName,
+          name: author.name,
+          profilePicture: author.profilePicture,
+          description: author.description || '',
+          followers: author.followers,
+          following: author.following,
+          statusesCount: author.statusesCount,
+          isBlueVerified: author.isBlueVerified,
+          createdAt: author.createdAt,
+        }};
+      } catch (e2: any) {
+        throw _err; // re-lanzar el error original si el fallback falla
+      }
+    }
     // Según la especificación recibida, la forma es { data: { ...usuario } }
     const base = p?.data ?? p;
     const normUserId = String(base?.id ?? '');
